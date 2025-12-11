@@ -1,6 +1,14 @@
-.gradle/ 
-build/ 
-out/ 
-.idea/ 
-*.log 
-*.iml 
+# Gradle
+.gradle/
+build/
+
+# IDE
+.idea/
+*.iml
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+out/
