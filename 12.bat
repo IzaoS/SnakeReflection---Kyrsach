@@ -1,0 +1,2 @@
+gradlew.bat test
+pause
