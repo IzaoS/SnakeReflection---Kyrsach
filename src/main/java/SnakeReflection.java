@@ -67,7 +67,7 @@ public class SnakeReflection extends JPanel implements ActionListener {
         char[] dirs = {'U', 'D', 'L', 'R'};
         direction = dirs[random.nextInt(dirs.length)];
 
-        // Случайная позиция головы (с запасом, чтобы тело поместилось)
+        // Случайная позиция головы
         int startX, startY;
         do {
             startX = random.nextInt(PANEL_WIDTH / UNIT_SIZE) * UNIT_SIZE;
@@ -77,7 +77,7 @@ public class SnakeReflection extends JPanel implements ActionListener {
         // Голова
         snake.add(new Point(startX, startY));
 
-        // Тело — строим в противоположном направлении от движения
+        // Тело 
         for (int i = 1; i < INITIAL_LENGTH; i++) {
             Point prev = snake.get(i - 1);
             Point next = new Point(prev);
@@ -87,7 +87,7 @@ public class SnakeReflection extends JPanel implements ActionListener {
                 case 'L' -> next.x += UNIT_SIZE;
                 case 'R' -> next.x -= UNIT_SIZE;
             }
-            // Если вышли за границы — обрезаем (маловероятно благодаря isSafeStart)
+
             if (next.x < 0 || next.x >= PANEL_WIDTH || next.y < 0 || next.y >= PANEL_HEIGHT) {
                 break;
             }
@@ -103,7 +103,15 @@ public class SnakeReflection extends JPanel implements ActionListener {
         timer.start();
     }
 
-    // Проверка, чтобы змейка не вылезала за границы при старте
+ /**
+ * Проверяет, что начальная позиция змейки безопасна
+ * и всё тело помещается внутри игрового поля.
+ *
+ * @param x начальная координата X головы
+ * @param y начальная координата Y головы
+ * @param dir направление движения
+ * @return true, если стартовая позиция допустима
+ */
     private boolean isSafeStart(int x, int y, char dir) {
         int tailX = x, tailY = y;
         switch (dir) {
@@ -126,7 +134,7 @@ public class SnakeReflection extends JPanel implements ActionListener {
             x = random.nextInt(PANEL_WIDTH / UNIT_SIZE) * UNIT_SIZE;
             y = random.nextInt(PANEL_HEIGHT / UNIT_SIZE) * UNIT_SIZE;
             foodPoint = new Point(x, y);
-        } while (snake.stream().anyMatch(foodPoint::equals)); // еда не на змейке
+        } while (snake.stream().filter(p -> p.equals(foodPoint)).findAny().isPresent()); // еда не на змейке
         food = foodPoint;
     }
 	
@@ -150,9 +158,10 @@ public class SnakeReflection extends JPanel implements ActionListener {
     public void draw(Graphics g) {
         if (running) {
             // Еда
-            g.setColor(Color.RED);
-            g.fillOval(food.x, food.y, UNIT_SIZE, UNIT_SIZE);
-
+			if (food != null) {
+				g.setColor(Color.RED);
+				g.fillOval(food.x, food.y, UNIT_SIZE, UNIT_SIZE);
+            }
             // Змейка
             for (int i = 0; i < snake.size(); i++) {
                 float t = (snake.size() > 1) ? (float) i / (snake.size() - 1) : 0.0f; 
@@ -170,8 +179,8 @@ public class SnakeReflection extends JPanel implements ActionListener {
             // Счёт и скорость
             g.setColor(Color.WHITE);
             g.setFont(new Font("Arial", Font.BOLD, 16));
-            g.drawString("Счёт: " + score, 10, 20);
-            g.drawString("Скорость: " + (MAX_DELAY - delay + MIN_DELAY) / 10, 10, 40); // условная шкала
+            g.drawString("Score: " + score, 10, 20);
+            g.drawString("Speed: " + (MAX_DELAY - delay + MIN_DELAY) / 10, 10, 40); // условная шкала
         }
     }
 	
@@ -185,54 +194,85 @@ public class SnakeReflection extends JPanel implements ActionListener {
  * </ul>
  */
 public void move() {
-	    if (snake.isEmpty()) {
-			logger.warn("Attempt to move the empty snake.");
-			return;
-		}
-		
-        logger.debug("Snake is mooving. Direction: {}, Score: {}", direction, score);
-        // Двигаем тело
-        for (int i = snake.size() - 1; i > 0; i--) {
-            snake.set(i, new Point(snake.get(i - 1)));
-        }
-
-        // Движение головы
-        Point head = snake.get(0);
-        Point newHead = new Point(head);
-
-        switch (direction) {
-            case 'U' -> newHead.y -= UNIT_SIZE;
-            case 'D' -> newHead.y += UNIT_SIZE;
-            case 'L' -> newHead.x -= UNIT_SIZE;
-            case 'R' -> newHead.x += UNIT_SIZE;
-        }
-
-        // Отражение от стен (по ТЗ)
-        if (newHead.x < 0) {
-            newHead.x = 0;
-            if (direction == 'L') direction = 'R';
-        } else if (newHead.x >= PANEL_WIDTH) {
-            newHead.x = PANEL_WIDTH - UNIT_SIZE;
-            if (direction == 'R') direction = 'L';
-        }
-
-        if (newHead.y < 0) {
-            newHead.y = 0;
-            if (direction == 'U') direction = 'D';
-        } else if (newHead.y >= PANEL_HEIGHT) {
-            newHead.y = PANEL_HEIGHT - UNIT_SIZE;
-            if (direction == 'D') direction = 'U';
-        }
-
-        snake.set(0, newHead);
-
-        // Поедание еды
-        if (newHead.equals(food)) {
-            score++;
-            snake.add(new Point(snake.get(snake.size() - 1)));
-            newFood();
-        }
+    if (snake.isEmpty()) {
+        logger.warn("Attempt to move the empty snake.");
+        return;
     }
+    logger.debug("Snake is mooving. Direction: {}, Score: {}", direction, score);
+
+    moveBody();
+    Point newHead = calculateNewHead();
+    handleWallReflection(newHead);
+    snake.set(0, newHead);
+    handleFoodCollision(newHead);
+}
+
+/**
+ * Сдвигает сегменты тела змейки,
+ * перемещая каждый элемент на позицию предыдущего.
+ */
+private void moveBody() {
+    for (int i = snake.size() - 1; i > 0; i--) {
+        snake.set(i, new Point(snake.get(i - 1)));
+    }
+}
+
+/**
+ * Вычисляет новую позицию головы змейки
+ * в зависимости от текущего направления движения.
+ *
+ * @return новая позиция головы
+ */
+private Point calculateNewHead() {
+    Point head = snake.get(0);
+    Point newHead = new Point(head);
+    switch (direction) {
+        case 'U' -> newHead.y -= UNIT_SIZE;
+        case 'D' -> newHead.y += UNIT_SIZE;
+        case 'L' -> newHead.x -= UNIT_SIZE;
+        case 'R' -> newHead.x += UNIT_SIZE;
+    }
+    return newHead;
+}
+
+/**
+ * Обрабатывает отражение змейки от границ игрового поля
+ * и корректирует направление движения.
+ *
+ * @param newHead новая позиция головы
+ */
+private void handleWallReflection(Point newHead) {
+    if (newHead.x < 0) {
+        newHead.x = 0;
+        if (direction == 'L') direction = 'R';
+    } else if (newHead.x >= PANEL_WIDTH) {
+        newHead.x = PANEL_WIDTH - UNIT_SIZE;
+        if (direction == 'R') direction = 'L';
+    }
+
+    if (newHead.y < 0) {
+        newHead.y = 0;
+        if (direction == 'U') direction = 'D';
+    } else if (newHead.y >= PANEL_HEIGHT) {
+        newHead.y = PANEL_HEIGHT - UNIT_SIZE;
+        if (direction == 'D') direction = 'U';
+    }
+}
+
+/**
+ * Проверяет столкновение головы змейки с едой.
+ * Увеличивает счёт и длину змейки при поедании.
+ *
+ * @param newHead новая позиция головы
+ */
+private void handleFoodCollision(Point newHead) {
+    if (newHead.equals(food)) {
+        score++;
+        snake.add(new Point(snake.get(snake.size() - 1)));
+        newFood();
+    }
+}
+
 
 /**
  * Обрабатывает событие таймера: вызывает {@link #move()} и обновляет отображение.
@@ -248,6 +288,12 @@ public void move() {
     }
 
     public class MyKeyAdapter extends KeyAdapter {
+/**
+ * Обрабатывает нажатия клавиш управления змейкой
+ * и изменения скорости игры.
+ *
+ * @param e событие нажатия клавиши
+ */
         @Override
         public void keyPressed(KeyEvent e) {
             // Управление направлением
@@ -277,14 +323,19 @@ public void move() {
             }
         }
 
+/**
+ * Перезапускает таймер с текущей задержкой.
+ * Используется при изменении скорости игры.
+ */
         private void restartTimer() {
-            timer.stop();
+            if (timer != null) {
+				timer.stop();
+			}
             timer = new Timer(delay, SnakeReflection.this);
             timer.start();
         }
     }
 
-    // getters and setters for testing purposes
 	
 /**
  * Возвращает список сегментов змейки.
@@ -330,15 +381,15 @@ public void move() {
 					 frame.setLocationRelativeTo(null);
 					 frame.setVisible(true);
 				} catch (Exception ex) {
-					logger.error("Ошибка при создании окна игры", ex);
+					logger.error("Error creating windowed game", ex);
 					JOptionPane.showMessageDialog(null,
-						"Произошла критическая ошибка: " + ex.getMessage(),
-						"Ошибка", JOptionPane.ERROR_MESSAGE);
+						"A critical error has occurred: " + ex.getMessage(),
+						"Error", JOptionPane.ERROR_MESSAGE);
 					System.exit(1);
 				}
             });
         } catch (Exception e) {
-            System.err.println("Критическая ошибка при запуске приложения: " + e.getMessage());
+            System.err.println("Critical error while starting the application: " + e.getMessage());
             e.printStackTrace();
         }
     }

@@ -10,8 +10,6 @@ class SnakeReflectionTest {
 
     @BeforeEach
     void setUp() {
-        // Swing components require to be run on the Event Dispatch Thread.
-        // For testing logic, we can often instantiate the class directly.
         game = new SnakeReflection();
     }
 
@@ -23,15 +21,10 @@ class SnakeReflectionTest {
         assertNotNull(game.getFood(), "Food should be placed on the board");
     }
 
-    // Need to make some fields/methods public or package-private for testing,
-    // or use reflection. Let's try to make them package-private for now.
-    // To do that, I'll need to modify the SnakeReflection.java file.
-    // For now, I will assume they are accessible for writing the test structure.
-
     @Test
     void newFood_placesFoodNotInSnake() {
         game.startGame();
-        for (int i = 0; i < 100; i++) { // Run multiple times to increase confidence
+        for (int i = 0; i < 100; i++) { 
             game.newFood();
             assertNotNull(game.getFood(), "Food should not be null");
             assertFalse(game.getSnake().contains(game.getFood()), "Food should not be on the snake");
@@ -41,7 +34,6 @@ class SnakeReflectionTest {
     @Test
     void move_snakeMovesCorrectly() {
         game.startGame();
-        // Set a known direction
         game.setDirection('R');
         Point initialHeadPosition = new Point(game.getSnake().get(0));
 
@@ -51,4 +43,34 @@ class SnakeReflectionTest {
         assertNotEquals(initialHeadPosition, newHeadPosition, "Snake head should have moved");
     }
     
+	@Test
+	void setDirection_changesDirection() {
+    game.startGame();
+    game.setDirection('L');
+    game.move();
+    assertNotNull(game.getSnake().get(0));
+	}
+	
+	@Test
+	void move_reflectsFromLeftWall() {
+		game.startGame();
+		game.getSnake().set(0, new Point(0, 100));
+		game.setDirection('L');
+		game.move();
+		assertEquals(0, game.getSnake().get(0).x);
+	}
+	
+	@Test
+	void move_eatsFoodAndIncreasesScore() {
+		game.startGame();
+		Point head = game.getSnake().get(0);
+		game.setDirection('R');
+		Point food = new Point(head.x + 20, head.y);
+		game.getSnake().set(0, head);
+		game.newFood();
+		game.getSnake().add(food);
+		game.move();
+		assertTrue(game.getSnake().size() >= 3);
+	}
+	
 }

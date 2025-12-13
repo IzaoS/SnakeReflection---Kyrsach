@@ -30,6 +30,5 @@ jar {
 tasks.withType(Javadoc) {
     options.encoding = 'UTF-8'
     options.charSet = 'UTF-8'
-    // Вместо JavadocMemberLevel.PUBLIC — используем строку (универсально)
     options.memberLevel = 'PUBLIC'
 }
