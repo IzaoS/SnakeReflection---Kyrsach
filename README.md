@@ -1,6 +1,6 @@
 # SnakeReflection — Курсовой проект
 
-Игра "Змейка" с отражением от стен и графическим интерфейсом на Java (Swing).
+Игра "Змейка" с отражением от стен и графическим интерфейсом 
 
 }Основные возможности
 
@@ -15,16 +15,16 @@
 }Структура проекта
 
 SnakeReflection---Kyrsach/
-├── build.gradle
-├── settings.gradle
-├── gradlew
-├── gradlew.bat
-├── .gitignore
-├── README.md
-├── src/
-│ ├── main/java/… # Исходный код игры
-│ ├── main/resources/… # Конфиги и ресурсы
-│ └── test/java/… # Unit-тесты
+-build.gradle
+-settings.gradle
+-gradlew
+-gradlew.bat
+-.gitignore
+-README.md
+-src/
+--main/java/… # Исходный код игры
+-main/resources/… # Конфиги и ресурсы
+--test/java/… # Unit-тесты
 
 }Сборка и запуск
 
